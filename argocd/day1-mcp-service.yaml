@@ -14,6 +14,15 @@ spec:
       valuesObject:
         service:
           type: ClusterIP
+        # Pinned to 1 replica: this MCP transport keeps session state
+        # in-memory per pod, with no session affinity configured on the
+        # Service. With 2+ replicas, `initialize` and a later `tools/list`
+        # can land on different pods and the second one replies
+        # "Session not found" - exactly what happened before this was
+        # pinned down. Fixing this properly (sticky sessions or a shared
+        # session store) is out of scope for this training deployment; see
+        # this chart's own deploy/README.md troubleshooting table.
+        replicaCount: 1
         # legacy.serviceUrl left empty on purpose - the chart derives
         # http://legacy-service.<namespace>.svc.cluster.local:8100 from
         # legacy.legacyReleaseName (defaults to "legacy-service", matching
