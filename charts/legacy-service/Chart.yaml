@@ -1,0 +1,13 @@
+apiVersion: v2
+name: legacy-service
+description: Core banking system of record (REST). Implements legacy-service/spec.md v1.0.0.
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - telecom
+  - banking
+  - rest
+  - fde-training
+maintainers:
+  - name: FDE Training - Day 1

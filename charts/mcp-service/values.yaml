@@ -1,0 +1,128 @@
+# Default values for mcp-service.
+
+replicaCount: 2
+
+image:
+  repository: mcp-service
+  tag: ""          # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# ---------------------------------------------------------------------------
+# THE integration point (spec section 1.4). This is the in-cluster DNS name of
+# legacy-service's Kubernetes Service - nothing else crosses the boundary.
+#
+#   http://<legacy release name>.<namespace>.svc.cluster.local:8100
+#
+# Leave `serviceUrl` empty and the chart derives it from legacyReleaseName and
+# the install namespace.
+# ---------------------------------------------------------------------------
+legacy:
+  serviceUrl: ""
+  legacyReleaseName: legacy-service
+  port: 8100
+  timeoutSeconds: 10
+  connectTimeoutSeconds: 2
+  maxRetries: 2
+  # Set when the legacy release was installed with --set apiKey=...
+  apiKey: ""
+  existingSecret: ""
+  existingSecretKey: legacy-api-key
+
+# ---------------------------------------------------------------------------
+# The Kubernetes Service (spec section 8.3).
+#
+#   NodePort  -> Insomnia/Postman and client/call_mcp.py reach http://localhost:30200/mcp
+#   ClusterIP -> in-cluster only; what a production deployment should use, with
+#                an authenticated gateway in front (spec section 12)
+# ---------------------------------------------------------------------------
+service:
+  type: NodePort
+  port: 8200
+  targetPort: http
+  nodePort: 30200
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: nginx
+  host: mcp.local
+  path: /
+  pathType: Prefix
+  annotations: {}
+  tls: []
+
+app:
+  serverName: banking-mcp
+  logLevel: INFO
+  logFormat: json
+  # In-cluster Host headers are Service DNS names, not localhost, so the SDK's
+  # default host allow-list would reject every call (spec decision D8).
+  allowedHosts: "*"
+  allowedOrigins: "*"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+probes:
+  liveness:
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readiness:
+    # /ready follows legacy-service, so a legacy outage takes these pods out of
+    # the Service's endpoints instead of restarting them.
+    path: /ready
+    initialDelaySeconds: 3
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  startup:
+    path: /health
+    periodSeconds: 2
+    failureThreshold: 15
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1

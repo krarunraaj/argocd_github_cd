@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: day1-legacy-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/krarunraaj/argocd_github_cd.git
+    targetRevision: main
+    path: charts/legacy-service
+    helm:
+      releaseName: legacy-service
+      valuesObject:
+        service:
+          type: ClusterIP
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

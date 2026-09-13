@@ -1,0 +1,43 @@
+simple-agent {{ .Chart.AppVersion }} is installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Service: {{ include "simple-agent.fullname" . }} ({{ .Values.service.type }}, port {{ .Values.service.port }})
+Configured LLM base URL (must be reachable from INSIDE THE POD): {{ .Values.llm.baseUrl }}
+
+1. Wait for the pods to be Ready:
+
+   kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "simple-agent.fullname" . }}
+
+2. Open it in a browser:
+
+{{- if eq .Values.service.type "NodePort" }}
+   http://localhost:{{ .Values.service.nodePort }}
+
+   (On minikube use:  http://$(minikube ip):{{ .Values.service.nodePort }})
+{{- else if eq .Values.service.type "LoadBalancer" }}
+   Wait for an external address, then browse to it:
+
+   kubectl -n {{ .Release.Namespace }} get svc {{ include "simple-agent.fullname" . }} -w
+{{- else }}
+   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "simple-agent.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+
+   http://localhost:{{ .Values.service.port }}
+{{- end }}
+{{- if .Values.ingress.enabled }}
+
+   Ingress is enabled:  http://{{ .Values.ingress.host }}
+   (add "127.0.0.1 {{ .Values.ingress.host }}" to /etc/hosts for a local cluster)
+{{- end }}
+
+3. IMPORTANT: `llm.baseUrl` must be an address the POD can reach - this is
+   the opposite constraint from banking-web-application's `legacy.serviceUrl`.
+   The LLM call happens server-side in this pod, not in the browser. Plain
+   "localhost" resolves to the pod itself and will fail; a plain LAN IP that
+   only your laptop's browser can see will also fail. Confirm reachability
+   directly:
+
+   kubectl -n {{ .Release.Namespace }} exec deploy/{{ include "simple-agent.fullname" . }} -- \
+     python -c "import urllib.request;print(urllib.request.urlopen('{{ .Values.llm.baseUrl }}/models', timeout=3).status)"
+
+4. Send a message and confirm you get a real reply back (not a connection
+   error) - that's proof the whole chain, chat UI -> API -> Agent -> LLM,
+   is wired correctly end to end.

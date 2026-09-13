@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: day1-mcp-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/krarunraaj/argocd_github_cd.git
+    targetRevision: main
+    path: charts/mcp-service
+    helm:
+      releaseName: mcp-service
+      valuesObject:
+        service:
+          type: ClusterIP
+        # legacy.serviceUrl left empty on purpose - the chart derives
+        # http://legacy-service.<namespace>.svc.cluster.local:8100 from
+        # legacy.legacyReleaseName (defaults to "legacy-service", matching
+        # day1-legacy-service.yaml's releaseName) and this Application's own
+        # destination namespace.
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

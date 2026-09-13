@@ -1,0 +1,27 @@
+# The Kubernetes Service for the running application (spec requirement c,
+# section 9.3). This is also the address mcp-service calls: set its
+# LEGACY_SERVICE_URL to
+#   http://{{ include "legacy-service.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "legacy-service.fullname" . }}
+  labels:
+    {{- include "legacy-service.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "legacy-service.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: TCP
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.nodePort }}
+      # Fixed nodePort so the Insomnia environment's baseUrl never changes.
+      nodePort: {{ .Values.service.nodePort }}
+      {{- end }}

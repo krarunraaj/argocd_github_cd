@@ -1,0 +1,77 @@
+# HTTPRoutes for the five Day 1 FDE Training projects, each bound to its own
+# listener (port 5000-5004) on agentgateway-proxy. Backend Service names
+# match each Helm release name (== chart name), all in namespace "app".
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: day1-legacy-service
+  namespace: app
+spec:
+  parentRefs:
+    - name: agentgateway-proxy
+      namespace: agentgateway-system
+      sectionName: day1-legacy-service
+  rules:
+    - backendRefs:
+        - name: legacy-service
+          port: 8100
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: day1-mcp-service
+  namespace: app
+spec:
+  parentRefs:
+    - name: agentgateway-proxy
+      namespace: agentgateway-system
+      sectionName: day1-mcp-service
+  rules:
+    - backendRefs:
+        - name: mcp-service
+          port: 8200
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: day1-banking-web-application
+  namespace: app
+spec:
+  parentRefs:
+    - name: agentgateway-proxy
+      namespace: agentgateway-system
+      sectionName: day1-banking-web-application
+  rules:
+    - backendRefs:
+        - name: banking-web-application
+          port: 8300
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: day1-simple-agent
+  namespace: app
+spec:
+  parentRefs:
+    - name: agentgateway-proxy
+      namespace: agentgateway-system
+      sectionName: day1-simple-agent
+  rules:
+    - backendRefs:
+        - name: simple-agent
+          port: 8400
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: day1-langgraph-agent
+  namespace: app
+spec:
+  parentRefs:
+    - name: agentgateway-proxy
+      namespace: agentgateway-system
+      sectionName: day1-langgraph-agent
+  rules:
+    - backendRefs:
+        - name: langgraph-agent
+          port: 8500

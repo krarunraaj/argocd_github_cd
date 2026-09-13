@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mcp-service.fullname" . }}-config
+  labels:
+    {{- include "mcp-service.labels" . | nindent 4 }}
+data:
+  MCP_PORT: {{ .Values.service.port | quote }}
+  MCP_SERVER_NAME: {{ .Values.app.serverName | quote }}
+  MCP_LOG_LEVEL: {{ .Values.app.logLevel | quote }}
+  MCP_LOG_FORMAT: {{ .Values.app.logFormat | quote }}
+  MCP_ALLOWED_HOSTS: {{ .Values.app.allowedHosts | quote }}
+  MCP_ALLOWED_ORIGINS: {{ .Values.app.allowedOrigins | quote }}
+  # The one and only integration point with the core banking system.
+  MCP_LEGACY_SERVICE_URL: {{ include "mcp-service.legacyUrl" . | quote }}
+  MCP_LEGACY_TIMEOUT_S: {{ .Values.legacy.timeoutSeconds | quote }}
+  MCP_LEGACY_CONNECT_TIMEOUT_S: {{ .Values.legacy.connectTimeoutSeconds | quote }}
+  MCP_LEGACY_MAX_RETRIES: {{ .Values.legacy.maxRetries | quote }}

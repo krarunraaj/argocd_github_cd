@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: day1-simple-agent
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/krarunraaj/argocd_github_cd.git
+    targetRevision: main
+    path: charts/simple-agent
+    helm:
+      releaseName: simple-agent
+      valuesObject:
+        service:
+          type: ClusterIP
+        llm:
+          # Must be reachable from INSIDE THE POD. "localhost" is the pod
+          # itself; this is the host machine's address as seen from inside
+          # this Rancher Desktop cluster's Lima VM (where a local Ollama
+          # runs), discovered via `kubectl exec ... -- wget <ip>:11434`.
+          baseUrl: "http://192.168.5.2:11434/v1"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

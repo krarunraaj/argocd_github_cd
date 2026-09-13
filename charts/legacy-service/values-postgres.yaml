@@ -1,0 +1,19 @@
+# Example overrides for the PostgreSQL backend:
+#
+#   helm upgrade --install legacy-service deploy/helm/legacy-service \
+#     -f deploy/helm/legacy-service/values-postgres.yaml \
+#     --set postgres.databaseUrl='postgresql+psycopg://banking:pass@postgres:5432/banking'
+#
+# Prefer --set (or an existingSecret) for the URL so the credential never lands
+# in a file that gets committed.
+banking:
+  backend: postgres
+
+postgres:
+  databaseUrl: ""            # supply at install time, or use existingSecret
+  existingSecret: ""
+  existingSecretKey: database-url
+  migrations:
+    enabled: true
+
+replicaCount: 2

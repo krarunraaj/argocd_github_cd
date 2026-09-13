@@ -1,0 +1,111 @@
+# Default values for banking-web-application.
+
+replicaCount: 2
+
+image:
+  repository: banking-web-application
+  tag: ""          # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# ---------------------------------------------------------------------------
+# IMPORTANT: unlike mcp-service, this app's browser calls legacy-service
+# DIRECTLY - the fetch() calls happen in the user's browser, not on the
+# server side. So `legacy.serviceUrl` must be an address the BROWSER can
+# reach, never an in-cluster DNS name like
+# `legacy-service.default.svc.cluster.local` (that only resolves inside the
+# cluster's network and would break every request).
+#
+# Point it at whatever exposes legacy-service to the outside world:
+#   - legacy-service's NodePort:  http://localhost:30100 (or the node's IP)
+#   - legacy-service's Ingress:   http://legacy.local
+#   - a LoadBalancer's external address
+# ---------------------------------------------------------------------------
+legacy:
+  serviceUrl: "http://localhost:30100"
+  # Set when the legacy release was installed with --set apiKey=...
+  # The browser sends this as a plain X-API-Key header - fine for a training
+  # demo, not a pattern to carry into production.
+  apiKey: ""
+
+# ---------------------------------------------------------------------------
+# The Kubernetes Service that fronts this application.
+# ---------------------------------------------------------------------------
+service:
+  type: NodePort
+  port: 8300
+  targetPort: http
+  nodePort: 30300
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: nginx
+  host: banking.local
+  path: /
+  pathType: Prefix
+  annotations: {}
+  tls: []
+
+app:
+  logLevel: INFO
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+probes:
+  liveness:
+    path: /health
+    initialDelaySeconds: 3
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readiness:
+    path: /ready
+    initialDelaySeconds: 2
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 3
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1

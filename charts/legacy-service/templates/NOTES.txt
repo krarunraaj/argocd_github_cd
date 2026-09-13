@@ -1,0 +1,47 @@
+legacy-service {{ .Chart.AppVersion }} is installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Backend: {{ .Values.banking.backend }}
+Service: {{ include "legacy-service.fullname" . }} ({{ .Values.service.type }}, port {{ .Values.service.port }})
+
+1. Wait for the pods to be Ready:
+
+   kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "legacy-service.fullname" . }}
+
+2. Reach the service from Insomnia:
+
+{{- if eq .Values.service.type "NodePort" }}
+   baseUrl = http://localhost:{{ .Values.service.nodePort }}
+
+   (On minikube use:  http://$(minikube ip):{{ .Values.service.nodePort }})
+{{- else if eq .Values.service.type "LoadBalancer" }}
+   Wait for an external address, then use it as baseUrl:
+
+   kubectl -n {{ .Release.Namespace }} get svc {{ include "legacy-service.fullname" . }} -w
+{{- else }}
+   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "legacy-service.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+
+   baseUrl = http://localhost:{{ .Values.service.port }}
+{{- end }}
+{{- if .Values.ingress.enabled }}
+
+   Ingress is enabled:  http://{{ .Values.ingress.host }}
+   (add "127.0.0.1 {{ .Values.ingress.host }}" to /etc/hosts for a local cluster)
+{{- end }}
+
+3. Smoke-test it:
+
+   curl -s $baseUrl/health
+   curl -s $baseUrl/customers/CIF908123/accounts
+
+   Or run the whole Insomnia suite:
+   npx inso run collection deploy/insomnia/legacy-service.insomnia_collection.json \
+     --env "legacy-service :: {{ if eq .Values.service.type "NodePort" }}nodeport{{ else }}portforward{{ end }}"
+
+4. Point mcp-service at this release:
+
+   LEGACY_SERVICE_URL=http://{{ include "legacy-service.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+{{- if .Values.apiKey }}
+
+NOTE: API-key authentication is ENABLED. Send "X-API-Key: <your key>" on every
+      /customers/... request. /health, /ready and /metrics stay open.
+{{- end }}

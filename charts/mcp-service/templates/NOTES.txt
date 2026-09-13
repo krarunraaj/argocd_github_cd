@@ -1,0 +1,37 @@
+mcp-service {{ .Chart.AppVersion }} is installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Legacy pod: {{ include "mcp-service.legacyUrl" . }}
+Service:    {{ include "mcp-service.fullname" . }} ({{ .Values.service.type }}, port {{ .Values.service.port }})
+
+1. Wait for the pods to be Ready. Readiness follows legacy-service, so if these
+   pods stay NotReady, check the legacy release first:
+
+   kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "mcp-service.fullname" . }}
+   kubectl -n {{ .Release.Namespace }} get endpoints {{ .Values.legacy.legacyReleaseName }}
+
+2. MCP endpoint:
+
+{{- if eq .Values.service.type "NodePort" }}
+   From your laptop:  http://localhost:{{ .Values.service.nodePort }}/mcp
+{{- else }}
+   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "mcp-service.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+   Then:              http://localhost:{{ .Values.service.port }}/mcp
+{{- end }}
+   In-cluster:        http://{{ include "mcp-service.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}/mcp
+
+3. Validate:
+
+   curl -s $baseUrl/health
+   curl -s $baseUrl/ready          # "legacy": "up" means the boundary works
+
+   # the reference MCP client
+   cd client && MCP_SERVICE_URL=$baseUrl uv run --project ../mcp-service python call_mcp.py CIF908123
+
+   # or the Postman suite (full initialize handshake)
+   newman run deploy/postman/mcp-service.postman_collection.json \
+     -e deploy/postman/{{ if eq .Values.service.type "NodePort" }}nodeport{{ else }}portforward{{ end }}.postman_environment.json
+
+NOTE: this release exposes the MCP endpoint without inbound authentication.
+      That is a training convenience ({{ .Values.service.type }} + no auth).
+      A real deployment should use service.type=ClusterIP behind an
+      authenticated gateway - see spec.md section 12.

@@ -1,0 +1,12 @@
+apiVersion: v2
+name: simple-agent
+description: Day 1 FDE Training Step 1 - chat UI -> API -> Agent -> LLM, no tools, no auth, no persistence.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - agent
+  - llm
+  - fde-training
+maintainers:
+  - name: FDE Training - Day 1

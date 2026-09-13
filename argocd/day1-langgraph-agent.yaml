@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: day1-langgraph-agent
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/krarunraaj/argocd_github_cd.git
+    targetRevision: main
+    path: charts/langgraph-agent
+    helm:
+      releaseName: langgraph-agent
+      valuesObject:
+        service:
+          type: ClusterIP
+        legacy:
+          serviceUrl: "http://legacy-service.app.svc.cluster.local:8100"
+        llm:
+          baseUrl: "http://192.168.5.2:11434/v1"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

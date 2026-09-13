@@ -1,0 +1,115 @@
+# Default values for simple-agent.
+
+replicaCount: 2
+
+image:
+  repository: simple-agent
+  tag: ""          # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# ---------------------------------------------------------------------------
+# IMPORTANT: the opposite constraint from banking-web-application's
+# `legacy.serviceUrl`. This app calls the LLM SERVER-SIDE, from inside the
+# pod - so `llm.baseUrl` must be an address the POD can reach, never
+# "localhost" (that's the pod itself) and never a plain LAN IP that only
+# your laptop's browser can see.
+#
+# Point it at whatever exposes an OpenAI-compatible endpoint to the cluster:
+#   - a hosted API:                 https://api.openai.com/v1
+#   - an in-cluster LLM gateway:     http://llm-gateway.default.svc.cluster.local:8080/v1
+#   - Ollama running on your laptop, reached from inside a local dev cluster
+#     (Rancher Desktop/Lima, colima, etc. all expose the host under some
+#     internal address - e.g. this training's own cluster reaches the host
+#     at 192.168.5.2, discovered via `kubectl exec ... -- wget <hostIP>:11434`)
+# ---------------------------------------------------------------------------
+llm:
+  baseUrl: "http://host.docker.internal:11434/v1"
+  model: "llama3.1"
+  temperature: "0.2"
+  maxTokens: "512"
+  # Only needed for a real hosted API (OpenAI, OpenRouter, ...). Leave blank
+  # for a keyless local Ollama - the app's own default ("ollama") is used.
+  apiKey: ""
+
+# ---------------------------------------------------------------------------
+# The Kubernetes Service that fronts this application.
+# ---------------------------------------------------------------------------
+service:
+  type: NodePort
+  port: 8400
+  targetPort: http
+  nodePort: 30400
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: nginx
+  host: simple-agent.local
+  path: /
+  pathType: Prefix
+  annotations: {}
+  tls: []
+
+app:
+  logLevel: INFO
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+probes:
+  liveness:
+    path: /health
+    initialDelaySeconds: 3
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readiness:
+    path: /ready
+    initialDelaySeconds: 2
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 3
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "legacy-service.fullname" . }}-config
+  labels:
+    {{- include "legacy-service.labels" . | nindent 4 }}
+data:
+  # Non-secret configuration only (spec section 5). Secrets live in the Secret.
+  LEGACY_LOG_LEVEL: {{ .Values.app.logLevel | quote }}
+  LEGACY_LOG_FORMAT: {{ .Values.app.logFormat | quote }}
+  LEGACY_BANKING_BACKEND: {{ .Values.banking.backend | quote }}
+  LEGACY_CORS_ORIGINS: {{ .Values.app.corsOrigins | quote }}
+  LEGACY_PORT: {{ .Values.service.port | quote }}
+  {{- if eq .Values.banking.backend "postgres" }}
+  LEGACY_DB_POOL_SIZE: {{ .Values.postgres.poolSize | quote }}
+  LEGACY_DB_MAX_OVERFLOW: {{ .Values.postgres.maxOverflow | quote }}
+  LEGACY_DB_POOL_TIMEOUT_S: {{ .Values.postgres.poolTimeoutSeconds | quote }}
+  {{- end }}

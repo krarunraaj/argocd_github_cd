@@ -1,0 +1,136 @@
+# Default values for legacy-service.
+# Every value here is referenced by a template; nothing is dead configuration.
+
+replicaCount: 2
+
+image:
+  repository: legacy-service
+  tag: ""          # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# ---------------------------------------------------------------------------
+# The Kubernetes Service that fronts the running application (spec section 9.3).
+#
+#   type: NodePort   -> reachable from Insomnia on the host at localhost:<nodePort>
+#                       (the training default: works on Rancher Desktop, Docker
+#                       Desktop, k3s and minikube with no extra components)
+#   type: ClusterIP  -> in-cluster only; reach it with `kubectl port-forward`
+#                       or through the Ingress below
+#   type: LoadBalancer -> a cloud provider allocates an external address
+#
+# In-cluster DNS name (what mcp-service points LEGACY_SERVICE_URL at):
+#   http://<release>-legacy-service.<namespace>.svc.cluster.local:8100
+# ---------------------------------------------------------------------------
+service:
+  type: NodePort
+  port: 8100
+  targetPort: http
+  nodePort: 30100
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: nginx
+  host: legacy.local
+  path: /
+  pathType: Prefix
+  annotations: {}
+  tls: []
+
+# ---------------------------------------------------------------------------
+# Application configuration -> ConfigMap (spec section 5)
+# ---------------------------------------------------------------------------
+app:
+  logLevel: INFO
+  logFormat: json
+  corsOrigins: "*"
+
+banking:
+  # "json"     -> the bundled simulator file; no database needed
+  # "postgres" -> requires postgres.databaseUrl, and runs the migration Job
+  backend: json
+
+postgres:
+  # Supplied through a Secret this chart renders. Never put this in a ConfigMap.
+  databaseUrl: ""
+  # Or reference a Secret you manage yourself:
+  existingSecret: ""
+  existingSecretKey: database-url
+  poolSize: 5
+  maxOverflow: 10
+  poolTimeoutSeconds: 5
+  # Run `alembic upgrade head` as a pre-install/pre-upgrade hook Job.
+  migrations:
+    enabled: true
+    backoffLimit: 2
+
+# Optional API key (spec section 7.4). Empty = authentication disabled.
+apiKey: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/path: /metrics
+  prometheus.io/port: "8100"
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+probes:
+  liveness:
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readiness:
+    path: /ready
+    initialDelaySeconds: 2
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 3
+  startup:
+    path: /health
+    periodSeconds: 2
+    failureThreshold: 15
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1

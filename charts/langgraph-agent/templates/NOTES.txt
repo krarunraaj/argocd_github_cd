@@ -1,0 +1,36 @@
+langgraph-agent {{ .Chart.AppVersion }} is installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Service: {{ include "langgraph-agent.fullname" . }} ({{ .Values.service.type }}, port {{ .Values.service.port }})
+Configured legacy-service URL: {{ .Values.legacy.serviceUrl }}
+Configured LLM base URL (must be reachable from INSIDE THE POD): {{ .Values.llm.baseUrl }}
+
+1. Wait for the pods to be Ready - this one actually checks legacy-service:
+
+   kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "langgraph-agent.fullname" . }}
+   kubectl -n {{ .Release.Namespace }} get pods -l {{ include "langgraph-agent.selectorLabels" . | replace ": " "=" | replace "\n" "," }}
+
+2. Open it in a browser:
+
+{{- if eq .Values.service.type "NodePort" }}
+   http://localhost:{{ .Values.service.nodePort }}
+{{- else if eq .Values.service.type "LoadBalancer" }}
+   kubectl -n {{ .Release.Namespace }} get svc {{ include "langgraph-agent.fullname" . }} -w
+{{- else }}
+   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "langgraph-agent.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+{{- end }}
+
+3. Confirm both integration points work from inside the pod:
+
+   kubectl -n {{ .Release.Namespace }} exec deploy/{{ include "langgraph-agent.fullname" . }} -- \
+     python -c "import urllib.request;print(urllib.request.urlopen('http://127.0.0.1:{{ .Values.service.port }}/ready').read())"
+
+   "legacy": "up" means legacy-service was reached by its configured URL.
+   If not, check `legacy.serviceUrl` and NetworkPolicies first.
+
+4. Ask the compound question this whole project exists to demonstrate:
+
+   "What's my balance and my last 5 transactions?"
+
+   and check the response's `routed_agents` field (or the UI's badge) shows
+   BOTH "accounts" and "transactions" - proof the graph fanned out to two
+   sub-agents in one turn.

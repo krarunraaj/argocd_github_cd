@@ -1,0 +1,113 @@
+# Default values for langgraph-agent.
+
+replicaCount: 2
+
+image:
+  repository: langgraph-agent
+  tag: ""          # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# ---------------------------------------------------------------------------
+# The one and only integration point with the core banking system - same
+# contract as mcp-service's legacy.serviceUrl. Must be reachable from INSIDE
+# THE POD (server-side calls, not browser calls).
+# ---------------------------------------------------------------------------
+legacy:
+  serviceUrl: "http://legacy-service.default.svc.cluster.local:8100"
+
+# ---------------------------------------------------------------------------
+# IMPORTANT: same reachability constraint as simple-agent's llm.baseUrl - the
+# LLM is called server-side, from inside the pod, only in the graph's final
+# "compose" node. "localhost" resolves to the pod itself and will not work.
+# See simple-agent/deploy/helm/simple-agent/values.yaml for the full comment.
+# ---------------------------------------------------------------------------
+llm:
+  baseUrl: "http://host.docker.internal:11434/v1"
+  model: "llama3.1"
+  temperature: "0.2"
+  maxTokens: "512"
+  # Only needed for a real hosted API (OpenAI, OpenRouter, ...).
+  apiKey: ""
+
+# ---------------------------------------------------------------------------
+# The Kubernetes Service that fronts this application.
+# ---------------------------------------------------------------------------
+service:
+  type: NodePort
+  port: 8500
+  targetPort: http
+  nodePort: 30500
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: nginx
+  host: langgraph-agent.local
+  path: /
+  pathType: Prefix
+  annotations: {}
+  tls: []
+
+app:
+  logLevel: INFO
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+probes:
+  liveness:
+    path: /health
+    initialDelaySeconds: 3
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readiness:
+    path: /ready
+    initialDelaySeconds: 3
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1

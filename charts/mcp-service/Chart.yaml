@@ -1,0 +1,12 @@
+apiVersion: v2
+name: mcp-service
+description: MCP adapter over the core banking REST service. Implements mcp-service/spec.md v1.0.0.
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - mcp
+  - banking
+  - fde-training
+maintainers:
+  - name: FDE Training - Day 1

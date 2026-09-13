@@ -1,0 +1,12 @@
+apiVersion: v2
+name: langgraph-agent
+description: Day 1 FDE Training - the banking scenario as a LangGraph workflow, with intent routing and domain sub-agents.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - agent
+  - langgraph
+  - fde-training
+maintainers:
+  - name: FDE Training - Day 1

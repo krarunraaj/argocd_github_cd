@@ -1,0 +1,12 @@
+apiVersion: v2
+name: banking-web-application
+description: Banking-style web dashboard. Static SPA calls legacy-service's REST API directly from the browser.
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - banking
+  - dashboard
+  - fde-training
+maintainers:
+  - name: FDE Training - Day 1

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "langgraph-agent.fullname" . }}-config
+  labels:
+    {{- include "langgraph-agent.labels" . | nindent 4 }}
+data:
+  LANGGRAPH_LOG_LEVEL: {{ .Values.app.logLevel | quote }}
+  LANGGRAPH_PORT: {{ .Values.service.port | quote }}
+  # Must be reachable from INSIDE THE POD - see values.yaml comments on
+  # `legacy.serviceUrl` and `llm.baseUrl`.
+  LANGGRAPH_LEGACY_SERVICE_URL: {{ .Values.legacy.serviceUrl | quote }}
+  LANGGRAPH_LLM_BASE_URL: {{ .Values.llm.baseUrl | quote }}
+  LANGGRAPH_LLM_MODEL: {{ .Values.llm.model | quote }}
+  LANGGRAPH_LLM_TEMPERATURE: {{ .Values.llm.temperature | quote }}
+  LANGGRAPH_LLM_MAX_TOKENS: {{ .Values.llm.maxTokens | quote }}

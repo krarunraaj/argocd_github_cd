@@ -1,0 +1,24 @@
+# Manages the shared agentgateway-proxy Gateway and the five day-1
+# HTTPRoutes. The Gateway spec in gateway/gateway.yaml is the FULL desired
+# listener set (pre-existing + new) - see the comment in that file for why
+# it must stay complete rather than additive.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: day1-gateway
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/krarunraaj/argocd_github_cd.git
+    targetRevision: main
+    path: gateway
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

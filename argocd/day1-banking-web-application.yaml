@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: day1-banking-web-application
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/krarunraaj/argocd_github_cd.git
+    targetRevision: main
+    path: charts/banking-web-application
+    helm:
+      releaseName: banking-web-application
+      valuesObject:
+        service:
+          type: ClusterIP
+        legacy:
+          # MUST be browser-reachable (this app calls legacy-service with
+          # client-side fetch(), never in-cluster DNS) - the agent-gateway's
+          # external address on legacy-service's own listener, port 5000.
+          serviceUrl: "http://192.168.64.2:5000"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
