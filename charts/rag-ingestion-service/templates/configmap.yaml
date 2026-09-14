@@ -28,3 +28,9 @@ data:
 
   RAG_DEFAULT_TOP_K: {{ .Values.retrieval.defaultTopK | quote }}
   RAG_MAX_TOP_K: {{ .Values.retrieval.maxTopK | quote }}
+
+  # The retrieval-mode flag (spec section 4.4) - the pod-wide default;
+  # every /query call can still override it with "mode".
+  RAG_RETRIEVAL_MODE: {{ .Values.retrieval.defaultMode | quote }}
+  RAG_HYBRID_CANDIDATE_POOL: {{ .Values.retrieval.hybridCandidatePool | quote }}
+  RAG_RRF_K: {{ .Values.retrieval.rrfK | quote }}

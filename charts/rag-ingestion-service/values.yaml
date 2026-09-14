@@ -49,6 +49,17 @@ chunking:
 retrieval:
   defaultTopK: 5
   maxTopK: 20
+  # ---------------------------------------------------------------------
+  # Retrieval mode (spec section 4.4) - the SECOND flag, independent of
+  # chunking. Any value here is just the pod-wide default; every /query
+  # call can override it per-request with `"mode": "semantic|bm25|hybrid"`.
+  #   semantic - FAISS cosine similarity only.
+  #   bm25     - lexical/keyword ranking only, no Ollama embedding call.
+  #   hybrid   - both, fused by rank with Reciprocal Rank Fusion (RRF).
+  # ---------------------------------------------------------------------
+  defaultMode: semantic
+  hybridCandidatePool: 20
+  rrfK: 60
 
 # ---------------------------------------------------------------------------
 # Persisted FAISS indices (spec section 4.3). Disabled by default so this
