@@ -1,0 +1,26 @@
+# The Kubernetes Service for the RAG pod (spec section 9.3).
+#
+# In-cluster:
+#   http://{{ include "rag-ingestion-service.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rag-ingestion-service.fullname" . }}
+  labels:
+    {{- include "rag-ingestion-service.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "rag-ingestion-service.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: TCP
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.nodePort }}
+      nodePort: {{ .Values.service.nodePort }}
+      {{- end }}

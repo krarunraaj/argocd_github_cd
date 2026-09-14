@@ -1,0 +1,45 @@
+rag-ingestion-service {{ .Chart.AppVersion }} is installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Ollama:  {{ .Values.ollama.baseUrl }}  (embed: {{ .Values.ollama.embedModel }}, chat: {{ .Values.ollama.chatModel }})
+Service: {{ include "rag-ingestion-service.fullname" . }} ({{ .Values.service.type }}, port {{ .Values.service.port }})
+Default chunking strategy: {{ .Values.chunking.defaultStrategy }} (override per-request; see spec.md section 3)
+
+1. Wait for the pod to be Ready. Readiness follows Ollama, so if it stays
+   NotReady, check Ollama is reachable from inside the cluster first:
+
+   kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "rag-ingestion-service.fullname" . }}
+   kubectl -n {{ .Release.Namespace }} exec deploy/{{ include "rag-ingestion-service.fullname" . }} -- \
+     python -c "import urllib.request; print(urllib.request.urlopen('{{ .Values.ollama.baseUrl }}/api/tags').status)"
+
+2. Endpoint:
+
+{{- if eq .Values.service.type "NodePort" }}
+   From your laptop:  http://localhost:{{ .Values.service.nodePort }}
+{{- else }}
+   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "rag-ingestion-service.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+   Then:              http://localhost:{{ .Values.service.port }}
+{{- end }}
+   In-cluster:        http://{{ include "rag-ingestion-service.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+
+3. Validate:
+
+   curl -s $baseUrl/health
+   curl -s $baseUrl/ready              # "ollama": "up" means the boundary works
+   curl -s $baseUrl/documents          # what's ingested, per chunking strategy
+
+   # compare chunking strategies side by side on the same document:
+   curl -s -X POST $baseUrl/chunks/preview \
+     -d '{"document_id":"aml_policy","strategy":"section"}'
+
+   # ask a grounded question:
+   curl -s -X POST $baseUrl/query \
+     -d '{"query":"How long to resolve a card fraud dispute?","strategy":"section"}'
+
+   # or the Postman suite:
+   newman run deploy/postman/rag-ingestion-service.postman_collection.json \
+     -e deploy/postman/{{ if eq .Values.service.type "NodePort" }}nodeport{{ else }}portforward{{ end }}.postman_environment.json
+
+NOTE: this release runs with persistence.enabled={{ .Values.persistence.enabled }}. When false
+      (the default), a pod restart re-runs the startup auto-ingest against the
+      bundled policy corpus instead of restoring a saved FAISS index - fine
+      for a demo, not what you want for a long-lived deployment.

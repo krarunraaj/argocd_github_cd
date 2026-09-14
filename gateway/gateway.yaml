@@ -3,7 +3,7 @@
 # This becomes the single GitOps source of truth for this Gateway, managed by
 # the "day1-gateway" ArgoCD Application (automated + selfHeal). It includes
 # every pre-existing listener (ports 8080-8088, added ad hoc across earlier
-# sessions) PLUS the five new day-1 listeners on 5000-5004 - all in one file,
+# sessions) PLUS the six day-1 listeners on 5000-5005 - all in one file,
 # so a sync here can never silently drop the listeners this file doesn't
 # "own". If you add a new listener by hand with kubectl in the future,
 # selfHeal WILL remove it again unless you also add it here.
@@ -77,7 +77,7 @@ spec:
     name: mcp-inspector-proxy
     port: 8088
     protocol: HTTP
-  # ─── Day 1 FDE Training projects - port range 5000-5004 ───
+  # ─── Day 1 FDE Training projects - port range 5000-5005 ───
   - allowedRoutes:
       namespaces:
         from: All
@@ -107,4 +107,10 @@ spec:
         from: All
     name: day1-langgraph-agent
     port: 5004
+    protocol: HTTP
+  - allowedRoutes:
+      namespaces:
+        from: All
+    name: day1-rag-ingestion-service
+    port: 5005
     protocol: HTTP

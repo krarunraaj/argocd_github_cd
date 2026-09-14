@@ -1,5 +1,5 @@
-# HTTPRoutes for the five Day 1 FDE Training projects, each bound to its own
-# listener (port 5000-5004) on agentgateway-proxy. Backend Service names
+# HTTPRoutes for the six Day 1 FDE Training projects, each bound to its own
+# listener (port 5000-5005) on agentgateway-proxy. Backend Service names
 # match each Helm release name (== chart name), all in namespace "app".
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -75,3 +75,18 @@ spec:
     - backendRefs:
         - name: langgraph-agent
           port: 8500
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: day1-rag-ingestion-service
+  namespace: app
+spec:
+  parentRefs:
+    - name: agentgateway-proxy
+      namespace: agentgateway-system
+      sectionName: day1-rag-ingestion-service
+  rules:
+    - backendRefs:
+        - name: rag-ingestion-service
+          port: 8600

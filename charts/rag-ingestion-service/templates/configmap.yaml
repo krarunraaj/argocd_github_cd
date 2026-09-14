@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rag-ingestion-service.fullname" . }}-config
+  labels:
+    {{- include "rag-ingestion-service.labels" . | nindent 4 }}
+data:
+  RAG_PORT: {{ .Values.service.port | quote }}
+  RAG_SERVER_NAME: {{ .Values.app.serverName | quote }}
+  RAG_LOG_LEVEL: {{ .Values.app.logLevel | quote }}
+  RAG_LOG_FORMAT: {{ .Values.app.logFormat | quote }}
+  RAG_ALLOWED_HOSTS: {{ .Values.app.allowedHosts | quote }}
+  RAG_ALLOWED_ORIGINS: {{ .Values.app.allowedOrigins | quote }}
+
+  RAG_OLLAMA_BASE_URL: {{ .Values.ollama.baseUrl | quote }}
+  RAG_OLLAMA_EMBED_MODEL: {{ .Values.ollama.embedModel | quote }}
+  RAG_OLLAMA_EMBED_DIM: {{ .Values.ollama.embedDim | quote }}
+  RAG_OLLAMA_CHAT_MODEL: {{ .Values.ollama.chatModel | quote }}
+
+  # The chunking flag (spec section 3) - the pod-wide default; every
+  # /ingest, /chunks/preview, and /query call can still override it.
+  RAG_CHUNK_STRATEGY: {{ .Values.chunking.defaultStrategy | quote }}
+  RAG_CHUNK_CHAR_SIZE: {{ .Values.chunking.characterSize | quote }}
+  RAG_CHUNK_CHAR_OVERLAP: {{ .Values.chunking.characterOverlap | quote }}
+  RAG_CHUNK_WORD_SIZE: {{ .Values.chunking.wordSize | quote }}
+  RAG_CHUNK_WORD_OVERLAP: {{ .Values.chunking.wordOverlap | quote }}
+  RAG_SECTION_MAX_CHARS: {{ .Values.chunking.sectionMaxChars | quote }}
+
+  RAG_DEFAULT_TOP_K: {{ .Values.retrieval.defaultTopK | quote }}
+  RAG_MAX_TOP_K: {{ .Values.retrieval.maxTopK | quote }}

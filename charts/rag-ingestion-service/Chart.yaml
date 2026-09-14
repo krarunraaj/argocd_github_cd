@@ -1,0 +1,12 @@
+apiVersion: v2
+name: rag-ingestion-service
+description: RAG ingestion + retrieval pod for banking policy documents. Flag-controlled chunking (character | word | section). Implements rag-ingestion-service/spec.md v1.0.0.
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - rag
+  - banking
+  - fde-training
+maintainers:
+  - name: FDE Training - Day 1

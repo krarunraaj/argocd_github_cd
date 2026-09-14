@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: day1-rag-ingestion-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/krarunraaj/argocd_github_cd.git
+    targetRevision: main
+    path: charts/rag-ingestion-service
+    helm:
+      releaseName: rag-ingestion-service
+      valuesObject:
+        service:
+          type: ClusterIP
+        # Pinned to 1 replica: each pod holds its own local FAISS index with
+        # no shared storage by default (persistence.enabled=false). With
+        # 2+ replicas, an /ingest on one pod would be invisible to a /query
+        # on another - see this chart's own spec.md section 11.
+        replicaCount: 1
+        # ollama.baseUrl left at the chart default
+        # (http://host.docker.internal:11434) - the same host-gateway alias
+        # simple-agent and langgraph-agent already use to reach the laptop's
+        # Ollama server from inside this cluster.
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

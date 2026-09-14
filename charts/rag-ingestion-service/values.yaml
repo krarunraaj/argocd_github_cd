@@ -1,0 +1,147 @@
+# Default values for rag-ingestion-service.
+
+replicaCount: 1
+# Pinned to 1 replica: each pod auto-ingests into its own FAISS index on
+# startup (or via its own PVC, if enabled below). With 2+ replicas and no
+# PVC, one pod's /ingest wouldn't be visible to the other's /query - exactly
+# the kind of split-brain a demo should not have to explain. If you need
+# more than 1 replica, enable persistence with a ReadWriteMany-capable
+# storage class, or move to a shared vector store (see spec section 11).
+
+image:
+  repository: rag-ingestion-service
+  tag: ""          # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# ---------------------------------------------------------------------------
+# Ollama - the ONLY external dependency (spec section 4). Same server the
+# chat agents already use; `host.docker.internal` is the Rancher Desktop /
+# Docker Desktop alias for the machine running the cluster.
+# ---------------------------------------------------------------------------
+ollama:
+  baseUrl: "http://host.docker.internal:11434"
+  embedModel: "nomic-embed-text"
+  embedDim: 768
+  chatModel: "llama3.1:latest"
+
+# ---------------------------------------------------------------------------
+# Chunking (spec section 3) - THE flag this project is about. Any value here
+# is just the pod-wide default; every /ingest, /chunks/preview, and /query
+# call can override it per-request.
+# ---------------------------------------------------------------------------
+chunking:
+  defaultStrategy: character
+  characterSize: 800
+  characterOverlap: 120
+  wordSize: 150
+  wordOverlap: 25
+  sectionMaxChars: 1800
+
+retrieval:
+  defaultTopK: 5
+  maxTopK: 20
+
+# ---------------------------------------------------------------------------
+# Persisted FAISS indices (spec section 4.3). Disabled by default so this
+# chart installs with zero extra cluster prerequisites for a first demo -
+# each pod restart just re-runs the (fast, local-corpus) startup ingest.
+# Enable this for a longer-lived demo where re-embedding on every restart
+# is wasteful.
+# ---------------------------------------------------------------------------
+persistence:
+  enabled: false
+  storageClassName: ""
+  size: 1Gi
+  accessMode: ReadWriteOnce
+
+service:
+  type: ClusterIP
+  port: 8600
+  targetPort: http
+  nodePort: 30600
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: nginx
+  host: rag.local
+  path: /
+  pathType: Prefix
+  annotations: {}
+  tls: []
+
+app:
+  serverName: rag-ingestion-pod
+  logLevel: INFO
+  logFormat: json
+  allowedHosts: "*"
+  allowedOrigins: "*"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false  # FAISS indices are written under /app/data/index
+  capabilities:
+    drop: ["ALL"]
+
+probes:
+  liveness:
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readiness:
+    # /ready calls Ollama, so an Ollama outage takes pods out of the
+    # Service's endpoints instead of serving requests that will fail.
+    path: /ready
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  startup:
+    # Generous: startup does a full corpus ingest (embeds every chunk)
+    # before the app is considered up.
+    path: /health
+    periodSeconds: 3
+    failureThreshold: 40
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
