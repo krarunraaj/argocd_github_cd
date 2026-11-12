@@ -10,6 +10,8 @@ spec:
     targetRevision: main
     path: spiffe-demo/spire
   destination: {server: https://kubernetes.default.svc, namespace: spire-mgmt}
+  ignoreDifferences:   # the API server fills defaults into the volumeClaimTemplates
+    - {group: apps, kind: StatefulSet, name: spire-server, jqPathExpressions: ['.spec.volumeClaimTemplates']}
   syncPolicy:
     automated: {prune: true, selfHeal: true}
     syncOptions: [CreateNamespace=true, ServerSideApply=true]
