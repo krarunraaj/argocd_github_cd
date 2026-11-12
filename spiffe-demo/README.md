@@ -29,7 +29,7 @@
 3. **Router given an identity.** In `day1-projects/router-agent`: new `identity.py` (loads the SVID as mTLS client certificate, trusts only the SPIRE bundle), `domains.py` (calls the refund agent with it, reloads when SPIRE rotates it), setting `ROUTER_SPIFFE_DIR`, a `Dockerfile`. With the setting empty the router behaves exactly as before; its 33 tests pass.
 4. **Router moved into the cluster** (`30-router-agent.yaml`) so SPIRE can attest it; `spiffe-helper` sidecar writes `svid.pem`, `svid_key.pem`, `bundle.pem`.
 5. **Gateway** (`10-gateway.yaml`): `spiffe: {}` makes it fetch its own SVID; the HTTPS listener uses it (`tls-certificate-source: SPIFFE`) and requires a client certificate from the same SPIRE.
-6. **Route to the Mac** (`20-refund-agent-route.yaml`): a selector-less Service whose endpoint is your Mac, so the refund agent is not moved.
+6. **Route to the Mac** (`20-refund-agent-route.yaml`): an `AgentgatewayBackend` pointing at your Mac, so the refund agent is not moved.
 7. **Policy** (`40-authz.yaml`): `source.subjectAltNames` (the caller's SPIFFE ID) must be the router's, and the path must be `/api/refund*` or `/health`.
 
 ## Run
