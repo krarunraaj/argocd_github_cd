@@ -1,0 +1,57 @@
+# The router (guardrails + intent routing) now runs in the cluster so SPIRE can attest it.
+# Its identity:  spiffe://fde.local/ns/refund-desk/sa/router-agent
+# spiffe-helper (sidecar) keeps svid.pem / svid_key.pem / bundle.pem fresh in /spiffe; the router uses them as its mTLS identity.
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: router-agent, namespace: refund-desk}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: spiffe-helper, namespace: refund-desk}
+data:
+  helper.conf: |
+    agent_address = "/spiffe-workload-api/spire-agent.sock"
+    cert_dir = "/spiffe"
+    svid_file_name = "svid.pem"
+    svid_key_file_name = "svid_key.pem"
+    svid_bundle_file_name = "bundle.pem"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: router-agent, namespace: refund-desk}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: router-agent}}
+  template:
+    metadata: {labels: {app: router-agent}}
+    spec:
+      serviceAccountName: router-agent
+      securityContext: {runAsUser: 1000, fsGroup: 1000}
+      containers:
+        - name: router-agent
+          image: router-agent:spiffe
+          imagePullPolicy: Never
+          command: ["sh", "-c", "until [ -f /spiffe/bundle.pem ]; do sleep 1; done; exec python -m router_agent.main"]
+          env:
+            - {name: ROUTER_REFUND_AGENT_URL, value: "https://refund-gateway.refund-desk.svc.cluster.local:7443"}
+            - {name: ROUTER_SPIFFE_DIR, value: /spiffe}
+          ports: [{containerPort: 8600}]
+          volumeMounts: [{name: spiffe, mountPath: /spiffe, readOnly: true}]
+        - name: spiffe-helper
+          image: ghcr.io/spiffe/spiffe-helper:0.10.1
+          args: ["-config", "/etc/spiffe-helper/helper.conf"]
+          volumeMounts:
+            - {name: spiffe, mountPath: /spiffe}
+            - {name: helper-conf, mountPath: /etc/spiffe-helper}
+            - {name: workload-api, mountPath: /spiffe-workload-api, readOnly: true}
+      volumes:
+        - {name: spiffe, emptyDir: {}}
+        - {name: helper-conf, configMap: {name: spiffe-helper}}
+        - {name: workload-api, csi: {driver: csi.spiffe.io, readOnly: true}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: router-agent, namespace: refund-desk}
+spec:
+  selector: {app: router-agent}
+  ports: [{port: 8600, targetPort: 8600}]

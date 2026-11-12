@@ -1,0 +1,14 @@
+global:
+  spire:
+    trustDomain: fde.local
+    clusterName: rancher-desktop
+    jwtIssuer: https://oidc-discovery.fde.local
+    recommendations:
+      enabled: false
+spire-server:
+  persistence:
+    size: 1Gi
+spiffe-oidc-discovery-provider:
+  enabled: false
+tornjak-frontend:
+  enabled: false

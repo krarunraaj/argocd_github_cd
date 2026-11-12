@@ -1,0 +1,15 @@
+# Who may talk to the refund agent: only the router's SPIFFE ID, and only for the refund paths.
+# The identity is read from the caller's verified X.509-SVID, never from a header or an API key.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata: {name: only-the-router, namespace: refund-desk}
+spec:
+  targetRefs: [{group: gateway.networking.k8s.io, kind: HTTPRoute, name: refund-agent}]
+  traffic:
+    authorization:
+      action: Allow
+      policy:
+        matchExpressions:
+          - >-
+            source.subjectAltNames.exists(id, id == "spiffe://fde.local/ns/refund-desk/sa/router-agent")
+            && (request.path.startsWith("/api/refund") || request.path == "/health")

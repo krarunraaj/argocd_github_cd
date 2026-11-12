@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: spire
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/krarunraaj/argocd_github_cd.git
+    targetRevision: main
+    path: spiffe-demo/spire
+  destination: {server: https://kubernetes.default.svc, namespace: spire-mgmt}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]

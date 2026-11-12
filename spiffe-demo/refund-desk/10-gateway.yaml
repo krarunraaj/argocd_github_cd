@@ -1,0 +1,28 @@
+# The only door to the refund agent. `spiffe: {}` makes the gateway fetch its own X.509-SVID and the SPIRE trust bundle
+# from the SPIRE agent; the listener then serves that SVID and demands a client certificate signed by the same SPIRE.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayParameters
+metadata:
+  name: spiffe
+  namespace: refund-desk
+spec:
+  spiffe: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: refund-gateway
+  namespace: refund-desk
+spec:
+  gatewayClassName: agentgateway
+  infrastructure:
+    parametersRef: {group: agentgateway.dev, kind: AgentgatewayParameters, name: spiffe}
+  listeners:
+    - name: mtls
+      port: 7443
+      protocol: HTTPS
+      allowedRoutes: {namespaces: {from: Same}}
+      tls:
+        mode: Terminate
+        options:
+          agentgateway.dev/tls-certificate-source: SPIFFE
