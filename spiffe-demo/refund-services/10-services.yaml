@@ -13,7 +13,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: legacy-service
-          image: legacy-service:2.0.0
+          image: legacy-service:2.0.1
           imagePullPolicy: IfNotPresent
           env:
             - {name: LEGACY_PORT, value: "8100"}
@@ -46,7 +46,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: mcp-service
-          image: mcp-service:2.0.0
+          image: mcp-service:2.0.1
           imagePullPolicy: IfNotPresent
           env:
             - {name: MCP_PORT, value: "8200"}
@@ -83,7 +83,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: refund-agent
-          image: refund-agent:1.0.0
+          image: refund-agent:1.0.1
           imagePullPolicy: IfNotPresent
           env:
             - {name: LANGGRAPH_PORT, value: "8500"}
