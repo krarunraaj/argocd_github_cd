@@ -16,6 +16,9 @@ metadata:
 spec:
   backoffLimit: 6          # the SPIRE entry for a new pod takes a few seconds to appear
   template:
+    metadata:
+      # Same network position as the router (so the NetworkPolicy lets it in) but a different identity: the gateway must still refuse it.
+      labels: {app: router-agent}
     spec:
       serviceAccountName: rogue-agent
       restartPolicy: OnFailure
