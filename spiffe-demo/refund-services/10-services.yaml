@@ -1,0 +1,108 @@
+# The three backend services of the refund flow, in the same namespace as the router and the gateway.
+# All three ship traces to the OTel collector (OTEL_EXPORTER_OTLP_ENDPOINT); replicas stay at 1 because the demo data
+# (legacy-service) and MCP sessions (mcp-service) live in the pod.
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: legacy-service, namespace: refund-desk, labels: {app: legacy-service, part-of: refund-desk}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: legacy-service}}
+  template:
+    metadata: {labels: {app: legacy-service, part-of: refund-desk}}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: legacy-service
+          image: legacy-service:2.0.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: LEGACY_PORT, value: "8100"}
+            - {name: LEGACY_BANKING_BACKEND, value: json}
+            - {name: LEGACY_LOG_FORMAT, value: json}
+            - {name: LEGACY_LOG_LEVEL, value: INFO}
+            - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://otel-collector.observability.svc.cluster.local:4318"}
+          ports: [{name: http, containerPort: 8100}]
+          readinessProbe: {httpGet: {path: /health, port: http}, periodSeconds: 5}
+          livenessProbe: {httpGet: {path: /health, port: http}, initialDelaySeconds: 15, periodSeconds: 20}
+          resources: {requests: {cpu: 50m, memory: 128Mi}, limits: {memory: 384Mi}}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: legacy-service, namespace: refund-desk}
+spec:
+  selector: {app: legacy-service}
+  ports: [{name: http, port: 8100, targetPort: http}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: mcp-service, namespace: refund-desk, labels: {app: mcp-service, part-of: refund-desk}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: mcp-service}}
+  template:
+    metadata: {labels: {app: mcp-service, part-of: refund-desk}}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: mcp-service
+          image: mcp-service:2.0.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: MCP_PORT, value: "8200"}
+            - {name: MCP_SERVER_NAME, value: banking-mcp}
+            - {name: MCP_LEGACY_SERVICE_URL, value: "http://legacy-service.refund-desk.svc.cluster.local:8100"}
+            - {name: MCP_ALLOWED_HOSTS, value: "*"}
+            - {name: MCP_ALLOWED_ORIGINS, value: "*"}
+            - {name: MCP_LOG_FORMAT, value: json}
+            - {name: MCP_LOG_LEVEL, value: INFO}
+            - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://otel-collector.observability.svc.cluster.local:4318"}
+          ports: [{name: http, containerPort: 8200}]
+          readinessProbe: {httpGet: {path: /ready, port: http}, periodSeconds: 5}
+          livenessProbe: {httpGet: {path: /health, port: http}, initialDelaySeconds: 15, periodSeconds: 20}
+          resources: {requests: {cpu: 50m, memory: 128Mi}, limits: {memory: 384Mi}}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: mcp-service, namespace: refund-desk}
+spec:
+  selector: {app: mcp-service}
+  ports: [{name: http, port: 8200, targetPort: http}]
+---
+# The refund agent (LangGraph Refund Desk). Its model runs on the Mac (Ollama), reached as 192.168.5.2:11434.
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: refund-agent, namespace: refund-desk, labels: {app: refund-agent, part-of: refund-desk}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: refund-agent}}
+  template:
+    metadata: {labels: {app: refund-agent, part-of: refund-desk}}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: refund-agent
+          image: refund-agent:1.0.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: LANGGRAPH_PORT, value: "8500"}
+            - {name: LANGGRAPH_LOG_LEVEL, value: INFO}
+            - {name: LANGGRAPH_LEGACY_SERVICE_URL, value: "http://legacy-service.refund-desk.svc.cluster.local:8100"}
+            - {name: LANGGRAPH_MCP_URL, value: "http://mcp-service.refund-desk.svc.cluster.local:8200/mcp"}
+            - {name: LANGGRAPH_LLM_BASE_URL, value: "http://192.168.5.2:11434/v1"}
+            - {name: LANGGRAPH_LLM_MODEL, value: "llama3.1"}
+            - {name: LANGGRAPH_REFUND_LLM_MODEL, value: "gemma4:latest"}
+            - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://otel-collector.observability.svc.cluster.local:4318"}
+          ports: [{name: http, containerPort: 8500}]
+          readinessProbe: {httpGet: {path: /health, port: http}, periodSeconds: 5}
+          livenessProbe: {httpGet: {path: /health, port: http}, initialDelaySeconds: 20, periodSeconds: 20}
+          resources: {requests: {cpu: 100m, memory: 256Mi}, limits: {memory: 768Mi}}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: refund-agent, namespace: refund-desk}
+spec:
+  selector: {app: refund-agent}
+  ports: [{name: http, port: 8500, targetPort: http}]

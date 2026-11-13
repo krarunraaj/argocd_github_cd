@@ -1,0 +1,71 @@
+# Zero trust on the network as well as in TLS: nothing in refund-desk accepts traffic unless a rule below allows it.
+# browser -> router (UI) | router -> gateway | gateway -> refund-agent | refund-agent -> mcp, legacy | mcp -> legacy
+# Prometheus (namespace observability) may scrape metrics ports.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny-ingress, namespace: refund-desk}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-router-from-anywhere, namespace: refund-desk}
+spec:
+  podSelector: {matchLabels: {app: router-agent}}
+  policyTypes: [Ingress]
+  ingress: [{ports: [{port: 8600}]}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-gateway-from-router, namespace: refund-desk}
+spec:
+  podSelector: {matchLabels: {gateway.networking.k8s.io/gateway-name: refund-gateway}}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{podSelector: {matchLabels: {app: router-agent}}}]
+      ports: [{port: 7443}]
+    - from: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: observability}}}]
+      ports: [{port: 15020}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-refund-agent-from-gateway, namespace: refund-desk}
+spec:
+  podSelector: {matchLabels: {app: refund-agent}}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{podSelector: {matchLabels: {gateway.networking.k8s.io/gateway-name: refund-gateway}}}]
+      ports: [{port: 8500}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-mcp-from-refund-agent, namespace: refund-desk}
+spec:
+  podSelector: {matchLabels: {app: mcp-service}}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{podSelector: {matchLabels: {app: refund-agent}}}]
+      ports: [{port: 8200}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-legacy-from-mcp-and-agent, namespace: refund-desk}
+spec:
+  podSelector: {matchLabels: {app: legacy-service}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {matchLabels: {app: mcp-service}}
+        - podSelector: {matchLabels: {app: refund-agent}}
+      ports: [{port: 8100}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-prometheus-scrape, namespace: refund-desk}
+spec:
+  podSelector: {matchLabels: {app: router-agent}}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: observability}}}]
+      ports: [{port: 8600}]

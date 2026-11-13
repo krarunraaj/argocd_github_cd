@@ -1,10 +1,4 @@
-# The refund agent runs on the Mac (:8500, next to Ollama). The cluster reaches the Mac as 192.168.5.2 (host.lima.internal).
-apiVersion: agentgateway.dev/v1alpha1
-kind: AgentgatewayBackend
-metadata: {name: refund-agent, namespace: refund-desk}
-spec:
-  static: {host: 192.168.5.2, port: 8500}
----
+# The only route to the refund agent, which now runs in this namespace (see refund-services/).
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata: {name: refund-agent, namespace: refund-desk}
@@ -12,4 +6,4 @@ spec:
   parentRefs: [{group: gateway.networking.k8s.io, kind: Gateway, name: refund-gateway, sectionName: mtls}]
   rules:
     - matches: [{path: {type: PathPrefix, value: /}}]
-      backendRefs: [{group: agentgateway.dev, kind: AgentgatewayBackend, name: refund-agent, weight: 1}]
+      backendRefs: [{name: refund-agent, port: 8500, weight: 1}]

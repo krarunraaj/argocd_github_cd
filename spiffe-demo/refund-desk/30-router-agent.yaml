@@ -29,13 +29,22 @@ spec:
       securityContext: {runAsUser: 1000, fsGroup: 1000}
       containers:
         - name: router-agent
-          image: router-agent:1.0.0
+          image: router-agent:2.0.0
           imagePullPolicy: IfNotPresent
           command: ["sh", "-c", "until [ -f /spiffe/bundle.pem ]; do sleep 1; done; exec python -m router_agent.main"]
           env:
             - {name: ROUTER_REFUND_AGENT_URL, value: "https://refund-gateway.refund-desk.svc.cluster.local:7443"}
             - {name: ROUTER_SPIFFE_DIR, value: /spiffe}
-          ports: [{containerPort: 8600}]
+            - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://otel-collector.observability.svc.cluster.local:4318"}
+            - {name: ROUTER_LANGFUSE_HOST, value: "http://192.168.5.2:3002"}
+            - {name: ROUTER_LANGFUSE_UI_URL, value: "http://localhost:3002"}
+            - name: ROUTER_LANGFUSE_PUBLIC_KEY
+              valueFrom: {secretKeyRef: {name: langfuse-keys, key: public-key}}
+            - name: ROUTER_LANGFUSE_SECRET_KEY
+              valueFrom: {secretKeyRef: {name: langfuse-keys, key: secret-key}}
+          ports: [{name: http, containerPort: 8600}]
+          readinessProbe: {httpGet: {path: /health, port: http}, periodSeconds: 5}
+          resources: {requests: {cpu: 50m, memory: 96Mi}, limits: {memory: 256Mi}}
           volumeMounts: [{name: spiffe, mountPath: /spiffe, readOnly: true}]
         - name: spiffe-helper
           image: ghcr.io/spiffe/spiffe-helper:0.10.1

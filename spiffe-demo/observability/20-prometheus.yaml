@@ -1,0 +1,66 @@
+# Prometheus scrapes: the collector (span metrics for every service), the router's own /metrics, the gateway's stats port.
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: prometheus, namespace: observability}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: {name: prometheus-discovery}
+rules:
+  - {apiGroups: [""], resources: [pods, services, endpoints], verbs: [get, list, watch]}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: {name: prometheus-discovery}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: prometheus-discovery}
+subjects: [{kind: ServiceAccount, name: prometheus, namespace: observability}]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: prometheus, namespace: observability}
+data:
+  prometheus.yml: |
+    global: {scrape_interval: 15s}
+    scrape_configs:
+      - job_name: otel-spanmetrics
+        static_configs: [{targets: ["otel-collector.observability.svc.cluster.local:8889"]}]
+      - job_name: router-agent
+        kubernetes_sd_configs: [{role: pod, namespaces: {names: [refund-desk]}}]
+        relabel_configs:
+          - {source_labels: [__meta_kubernetes_pod_label_app], regex: router-agent, action: keep}
+          - {source_labels: [__meta_kubernetes_pod_container_name], regex: router-agent, action: keep}
+          - {source_labels: [__meta_kubernetes_pod_ip], target_label: __address__, replacement: "$1:8600"}
+      - job_name: refund-gateway
+        kubernetes_sd_configs: [{role: pod, namespaces: {names: [refund-desk]}}]
+        relabel_configs:
+          - {source_labels: [__meta_kubernetes_pod_label_gateway_networking_k8s_io_gateway_name], regex: refund-gateway, action: keep}
+          - {source_labels: [__meta_kubernetes_pod_ip], target_label: __address__, replacement: "$1:15020"}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: prometheus, namespace: observability, labels: {app: prometheus}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: prometheus}}
+  template:
+    metadata: {labels: {app: prometheus}}
+    spec:
+      serviceAccountName: prometheus
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.55.0
+          args: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=3d", "--web.enable-lifecycle"]
+          ports: [{name: http, containerPort: 9090}]
+          volumeMounts: [{name: config, mountPath: /etc/prometheus}, {name: data, mountPath: /prometheus}]
+          readinessProbe: {httpGet: {path: /-/ready, port: http}}
+          resources: {requests: {cpu: 50m, memory: 192Mi}, limits: {memory: 512Mi}}
+      volumes:
+        - {name: config, configMap: {name: prometheus}}
+        - {name: data, emptyDir: {}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: prometheus, namespace: observability}
+spec:
+  selector: {app: prometheus}
+  ports: [{name: http, port: 9090, targetPort: http}]
