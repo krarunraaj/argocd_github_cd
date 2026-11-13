@@ -178,8 +178,8 @@
   },
   {
    "id": 6,
-   "title": "Gateway: scrape up",
-   "type": "stat",
+   "title": "Gateway: requests by status (403 = identity refused)",
+   "type": "timeseries",
    "gridPos": {
     "x": 12,
     "y": 16,
@@ -193,32 +193,20 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "up{job=\"refund-gateway\"}",
+     "expr": "sum by (status) (rate(agentgateway_requests_total{gateway=\"refund-desk/refund-gateway\"}[2m]))",
+     "legendFormat": "HTTP {{status}}",
      "datasource": {
       "type": "prometheus",
       "uid": "prometheus"
-     },
-     "legendFormat": "gateway"
-    },
-    {
-     "refId": "B",
-     "expr": "up{job=\"router-agent\"}",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
-     },
-     "legendFormat": "router"
-    },
-    {
-     "refId": "C",
-     "expr": "up{job=\"otel-spanmetrics\"}",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
-     },
-     "legendFormat": "collector"
+     }
     }
-   ]
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps"
+    },
+    "overrides": []
+   }
   },
   {
    "id": 7,
