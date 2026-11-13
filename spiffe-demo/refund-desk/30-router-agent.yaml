@@ -29,7 +29,7 @@ spec:
       securityContext: {runAsUser: 1000, fsGroup: 1000}
       containers:
         - name: router-agent
-          image: router-agent:2.1.0
+          image: router-agent:2.1.1
           imagePullPolicy: IfNotPresent
           command: ["sh", "-c", "until [ -f /spiffe/bundle.pem ]; do sleep 1; done; exec python -m router_agent.main"]
           env:
