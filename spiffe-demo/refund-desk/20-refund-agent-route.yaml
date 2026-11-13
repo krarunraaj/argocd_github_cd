@@ -6,4 +6,4 @@ spec:
   parentRefs: [{group: gateway.networking.k8s.io, kind: Gateway, name: refund-gateway, sectionName: mtls}]
   rules:
     - matches: [{path: {type: PathPrefix, value: /}}]
-      backendRefs: [{name: refund-agent, port: 8500, weight: 1}]
+      backendRefs: [{group: "", kind: Service, name: refund-agent, port: 8500, weight: 1}]
