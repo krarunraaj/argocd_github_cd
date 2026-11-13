@@ -46,7 +46,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: mcp-service
-          image: mcp-service:2.0.1
+          image: mcp-service:2.0.2
           imagePullPolicy: IfNotPresent
           env:
             - {name: MCP_PORT, value: "8200"}
