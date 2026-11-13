@@ -1,5 +1,11 @@
 # SPIFFE / SPIRE for the refund agent (GitOps)
 
+> This folder is the GitOps source of the whole refund desk. Start, validate and the project layout are in
+> `refund-desk-e2e/README.md` (next to this repo on the Mac): `refund-desk-e2e/scripts/up.sh` then `scripts/validate.sh`.
+> Folders here: `apps/` (Argo CD Applications), `spire*/`, `observability/` (OTel collector, Prometheus, Loki, Promtail, Grafana),
+> `refund-desk/` (gateway, router, policy, tracing), `refund-services/` (refund-agent, mcp-service, legacy-service, NetworkPolicies), `intruder/`.
+> Remove everything: `./down.sh`.
+
 ```
 Customer ──► router-agent (pod) ──mTLS──► refund-gateway ──http──► refund agent :8500 ─► MCP :8200 ─► refund svc :8100
               id: .../sa/router-agent       checks cert, reads the        (your Mac, unchanged)
