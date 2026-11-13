@@ -1,0 +1,15 @@
+# The negative test, as GitOps: syncing this Application runs a Job whose pod has a VALID SPIRE identity but is not the router.
+# Manual sync on purpose (no `automated`): sync it whenever you want to run the test.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: intruder
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/krarunraaj/argocd_github_cd.git
+    targetRevision: main
+    path: spiffe-demo/intruder
+  destination: {server: https://kubernetes.default.svc, namespace: refund-desk}

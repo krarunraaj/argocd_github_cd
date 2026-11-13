@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# GitOps: everything is deployed by Argo CD from GitHub (spiffe-demo/ in the repo). This only builds the router image
-# (local image, never pulled) and registers the three Applications.   ./up.sh  then  ./demo.sh   (remove: ./down.sh)
-# Needs the refund agent running on the Mac (:8500): day-3/langgraph_console/start-all.sh
+# GitOps: Argo CD deploys everything from GitHub. This builds the router image (a local image, like your other charts use)
+# and registers the one root Application.   ./up.sh  then  ./demo.sh   (remove: ./down.sh)
+# Prerequisite: the refund agent on the Mac (:8500): day-3/langgraph_console/start-all.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
-docker build -q -t router-agent:spiffe ../projects/training/day1-projects/router-agent
-kubectl scale deploy/agentgateway deploy/agentgateway-proxy -n agentgateway-system --replicas=1   # the cluster was scaled to 0
-kubectl apply -f argocd/spire-crds.yaml -f argocd/spire.yaml -f argocd/refund-desk.yaml
-echo "Watch: kubectl get applications -n argocd   (spire-crds, spire, refund-desk should become Synced/Healthy)"
+docker build -q -t router-agent:1.0.0 ../projects/training/day1-projects/router-agent
+kubectl apply -f argocd/spiffe-demo.yaml
+echo "Watch: kubectl get applications -n argocd"

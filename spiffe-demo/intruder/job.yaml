@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rogue-agent
+  namespace: refund-desk
+  annotations: {argocd.argoproj.io/sync-wave: "-1"}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: intruder
+  namespace: refund-desk
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation   # every sync runs it afresh
+spec:
+  backoffLimit: 6          # the SPIRE entry for a new pod takes a few seconds to appear
+  template:
+    spec:
+      serviceAccountName: rogue-agent
+      restartPolicy: OnFailure
+      securityContext: {runAsUser: 0}
+      initContainers:
+        - name: fetch-svid
+          image: ghcr.io/spiffe/spire-agent:1.15.5
+          command: ["/opt/spire/bin/spire-agent"]
+          args: ["api", "fetch", "x509", "-socketPath", "/spiffe-workload-api/spire-agent.sock", "-write", "/certs"]
+          volumeMounts: [{name: spiffe, mountPath: /spiffe-workload-api, readOnly: true}, {name: certs, mountPath: /certs}]
+      containers:
+        - name: intruder
+          image: curlimages/curl:8.11.1
+          command: ["sh", "-c"]
+          args:
+            - |
+              G=https://refund-gateway.refund-desk.svc.cluster.local:7443
+              echo "a) no certificate:"
+              curl -sS -m 8 -k -o /dev/null -w '   -> HTTP %{http_code}\n' $G/health 2>&1 | tail -2
+              echo "b) rogue-agent SVID (spiffe://fde.local/ns/refund-desk/sa/rogue-agent), refund path:"
+              curl -sS -m 8 -k -o /dev/null -w '   -> HTTP %{http_code}\n' --cert /certs/svid.0.pem --key /certs/svid.0.key \
+                -X POST -H 'content-type: application/json' -d '{}' $G/api/refund
+          volumeMounts: [{name: certs, mountPath: /certs}]
+      volumes:
+        - {name: certs, emptyDir: {}}
+        - {name: spiffe, csi: {driver: csi.spiffe.io, readOnly: true}}

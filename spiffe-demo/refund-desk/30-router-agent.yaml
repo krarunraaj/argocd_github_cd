@@ -29,8 +29,8 @@ spec:
       securityContext: {runAsUser: 1000, fsGroup: 1000}
       containers:
         - name: router-agent
-          image: router-agent:spiffe
-          imagePullPolicy: Never
+          image: router-agent:1.0.0
+          imagePullPolicy: IfNotPresent
           command: ["sh", "-c", "until [ -f /spiffe/bundle.pem ]; do sleep 1; done; exec python -m router_agent.main"]
           env:
             - {name: ROUTER_REFUND_AGENT_URL, value: "https://refund-gateway.refund-desk.svc.cluster.local:7443"}

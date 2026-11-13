@@ -1,0 +1,16 @@
+# App of apps: the one thing you apply. It creates spire-crds, spire and refund-desk (in that order) and the manual `intruder` test.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: spiffe-demo
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/krarunraaj/argocd_github_cd.git
+    targetRevision: main
+    path: spiffe-demo/apps
+  destination: {server: https://kubernetes.default.svc, namespace: argocd}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}

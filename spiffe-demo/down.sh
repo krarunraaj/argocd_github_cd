@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-# Deleting the Applications makes Argo CD remove everything it deployed (auto-prune). Nothing else is touched.
+# Deleting the root Application removes the child Applications and everything they deployed.
 cd "$(dirname "$0")/.."
-kubectl delete -f argocd/refund-desk.yaml -f argocd/spire.yaml -f argocd/spire-crds.yaml --ignore-not-found
+kubectl delete -f argocd/spiffe-demo.yaml --ignore-not-found

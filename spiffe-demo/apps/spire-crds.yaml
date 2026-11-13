@@ -4,6 +4,7 @@ metadata:
   name: spire-crds
   namespace: argocd
   annotations: {argocd.argoproj.io/sync-wave: "0"}
+  finalizers: [resources-finalizer.argocd.argoproj.io]   # deleting the Application also deletes what it deployed
 spec:
   project: default
   source:
