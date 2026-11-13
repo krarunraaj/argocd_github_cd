@@ -29,11 +29,12 @@ spec:
       securityContext: {runAsUser: 1000, fsGroup: 1000}
       containers:
         - name: router-agent
-          image: router-agent:2.0.1
+          image: router-agent:2.1.0
           imagePullPolicy: IfNotPresent
           command: ["sh", "-c", "until [ -f /spiffe/bundle.pem ]; do sleep 1; done; exec python -m router_agent.main"]
           env:
             - {name: ROUTER_REFUND_AGENT_URL, value: "https://refund-gateway.refund-desk.svc.cluster.local:7443"}
+            - {name: ROUTER_POLICY_AGENT_URL, value: "https://refund-gateway.refund-desk.svc.cluster.local:7443"}   # same gateway: /api/policy routes to the policy agent
             - {name: ROUTER_SPIFFE_DIR, value: /spiffe}
             - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://otel-collector.observability.svc.cluster.local:4318"}
             - {name: ROUTER_LANGFUSE_UI_URL, value: "http://localhost:3002"}   # the UI links to the trace; spans go through the collector

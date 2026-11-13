@@ -1,4 +1,4 @@
-# Who may talk to the refund agent: only the router's SPIFFE ID, and only for the refund paths.
+# Who may talk to the refund agent: only the router's SPIFFE ID, and only for the refund and policy paths.
 # The identity is read from the caller's verified X.509-SVID, never from a header or an API key.
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
@@ -12,4 +12,4 @@ spec:
         matchExpressions:
           - >-
             source.subjectAltNames.exists(id, id == "spiffe://fde.local/ns/refund-desk/sa/router-agent")
-            && (request.path.startsWith("/api/refund") || request.path == "/health")
+            && (request.path.startsWith("/api/refund") || request.path.startsWith("/api/policy") || request.path == "/health")
