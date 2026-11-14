@@ -35,6 +35,8 @@ spec:
   ingress:
     - from: [{podSelector: {matchLabels: {gateway.networking.k8s.io/gateway-name: edge-gateway}}}]
       ports: [{port: 8800}]
+    - from: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: agentgateway-system}}}]   # the controller fetches the signing key set
+      ports: [{port: 8800}]
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
