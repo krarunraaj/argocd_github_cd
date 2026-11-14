@@ -49,7 +49,7 @@ kind: Deployment
 metadata: {name: prometheus, namespace: observability, labels: {app: prometheus}}
 spec:
   replicas: 1
-  strategy: {type: Recreate}   # one ReadWriteOnce volume: the old pod must let go first
+  strategy: {type: Recreate, rollingUpdate: null}   # one ReadWriteOnce volume: the old pod must let go first
   selector: {matchLabels: {app: prometheus}}
   template:
     metadata: {labels: {app: prometheus}}

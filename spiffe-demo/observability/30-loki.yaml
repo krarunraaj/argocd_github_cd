@@ -28,7 +28,7 @@ kind: Deployment
 metadata: {name: loki, namespace: observability, labels: {app: loki}}
 spec:
   replicas: 1
-  strategy: {type: Recreate}
+  strategy: {type: Recreate, rollingUpdate: null}
   selector: {matchLabels: {app: loki}}
   template:
     metadata: {labels: {app: loki}}
