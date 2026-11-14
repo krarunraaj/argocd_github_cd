@@ -10,11 +10,31 @@ spec:
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
-metadata: {name: allow-router-from-anywhere, namespace: refund-desk}
+metadata: {name: allow-edge-gateway-from-anywhere, namespace: refund-desk}
+spec:
+  podSelector: {matchLabels: {gateway.networking.k8s.io/gateway-name: edge-gateway}}
+  policyTypes: [Ingress]
+  ingress: [{ports: [{port: 8443}]}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-router-from-edge-gateway, namespace: refund-desk}
 spec:
   podSelector: {matchLabels: {app: router-agent}}
   policyTypes: [Ingress]
-  ingress: [{ports: [{port: 8600}]}]
+  ingress:
+    - from: [{podSelector: {matchLabels: {gateway.networking.k8s.io/gateway-name: edge-gateway}}}]
+      ports: [{port: 8600}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-idp-from-edge-gateway, namespace: refund-desk}
+spec:
+  podSelector: {matchLabels: {app: idp-service}}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{podSelector: {matchLabels: {gateway.networking.k8s.io/gateway-name: edge-gateway}}}]
+      ports: [{port: 8800}]
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

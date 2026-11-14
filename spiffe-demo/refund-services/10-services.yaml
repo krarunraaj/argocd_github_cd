@@ -178,3 +178,41 @@ metadata: {name: retriever-service, namespace: refund-desk}
 spec:
   selector: {app: retriever-service}
   ports: [{name: http, port: 8710, targetPort: http}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: idp-service, namespace: refund-desk, labels: {app: idp-service, part-of: refund-desk}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: idp-service}}
+  template:
+    metadata: {labels: {app: idp-service, part-of: refund-desk}}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: idp-service
+          image: idp-service:1.0.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: IDP_PORT, value: "8800"}
+            - {name: IDP_ISSUER, value: "https://idp.fde.local"}
+            - {name: IDP_AUDIENCE, value: refund-desk}
+            - {name: IDP_USER, valueFrom: {secretKeyRef: {name: idp-user, key: user}}}
+            - {name: IDP_PASSWORD, valueFrom: {secretKeyRef: {name: idp-user, key: password}}}
+            - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://otel-collector.observability.svc.cluster.local:4318"}
+          ports: [{name: http, containerPort: 8800}]
+          readinessProbe: {httpGet: {path: /health, port: http}, periodSeconds: 5}
+          livenessProbe: {httpGet: {path: /health, port: http}, initialDelaySeconds: 20, periodSeconds: 20}
+          resources: {requests: {cpu: 20m, memory: 64Mi}, limits: {memory: 192Mi}}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+          volumeMounts: [{name: keys, mountPath: /keys, readOnly: true}]
+      volumes:
+        - {name: keys, secret: {secretName: idp-signing-key}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: idp-service, namespace: refund-desk}
+spec:
+  selector: {app: idp-service}
+  ports: [{name: http, port: 8800, targetPort: http}]
+

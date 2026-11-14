@@ -1,0 +1,62 @@
+# The public front door. The browser comes here first, over HTTPS (TLS terminates at this gateway).
+#   /, /refund.js, /refund.css  the chat page            public
+#   /idp/*                       sign in, public key      public
+#   /api/*                       the router's API         only with a valid JWT from the idp-service
+# Everything else has no route (404). The router sits behind this gateway and takes no traffic from anywhere else.
+# The certificate (Secret edge-tls) and the idp signing key are written by scripts/create-secrets.sh, never stored in Git.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: edge-gateway
+  namespace: refund-desk
+spec:
+  gatewayClassName: agentgateway
+  listeners:
+    - name: https
+      port: 8443
+      protocol: HTTPS
+      allowedRoutes: {namespaces: {from: Same}}
+      tls:
+        mode: Terminate
+        certificateRefs: [{kind: Secret, name: edge-tls}]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: edge-public, namespace: refund-desk}
+spec:
+  parentRefs: [{group: gateway.networking.k8s.io, kind: Gateway, name: edge-gateway, sectionName: https}]
+  rules:
+    - matches:
+        - {path: {type: Exact, value: /}}
+        - {path: {type: Exact, value: /refund.js}}
+        - {path: {type: Exact, value: /refund.css}}
+      backendRefs: [{group: "", kind: Service, name: router-agent, port: 8600, weight: 1}]
+    - matches: [{path: {type: PathPrefix, value: /idp}}]
+      backendRefs: [{group: "", kind: Service, name: idp-service, port: 8800, weight: 1}]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: edge-api, namespace: refund-desk}
+spec:
+  parentRefs: [{group: gateway.networking.k8s.io, kind: Gateway, name: edge-gateway, sectionName: https}]
+  rules:
+    - matches: [{path: {type: PathPrefix, value: /api}}]
+      backendRefs: [{group: "", kind: Service, name: router-agent, port: 8600, weight: 1}]
+---
+# Strict: no token, a bad signature, a wrong issuer or audience, or an expired token gets 401 before the router sees the request.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata: {name: edge-jwt, namespace: refund-desk}
+spec:
+  targetRefs: [{group: gateway.networking.k8s.io, kind: HTTPRoute, name: edge-api}]
+  traffic:
+    jwtAuthentication:
+      mode: Strict
+      providers:
+        - issuer: https://idp.fde.local
+          audiences: [refund-desk]
+          jwks:
+            remote:
+              backendRef: {group: "", kind: Service, name: idp-service, port: 8800}
+              jwksPath: /idp/jwks.json
+              cacheDuration: 5m
