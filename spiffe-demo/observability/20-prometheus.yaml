@@ -36,11 +36,20 @@ data:
           - {source_labels: [__meta_kubernetes_pod_label_gateway_networking_k8s_io_gateway_name], regex: refund-gateway, action: keep}
           - {source_labels: [__meta_kubernetes_pod_ip], target_label: __address__, replacement: "$1:15020"}
 ---
+# Metrics survive pod restarts and the lite mode (an emptyDir lost them, so the dashboards came back empty).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: prometheus-data, namespace: observability}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 2Gi}}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata: {name: prometheus, namespace: observability, labels: {app: prometheus}}
 spec:
   replicas: 1
+  strategy: {type: Recreate}   # one ReadWriteOnce volume: the old pod must let go first
   selector: {matchLabels: {app: prometheus}}
   template:
     metadata: {labels: {app: prometheus}}
@@ -56,7 +65,7 @@ spec:
           resources: {requests: {cpu: 50m, memory: 192Mi}, limits: {memory: 512Mi}}
       volumes:
         - {name: config, configMap: {name: prometheus}}
-        - {name: data, emptyDir: {}}
+        - {name: data, persistentVolumeClaim: {claimName: prometheus-data}}
 ---
 apiVersion: v1
 kind: Service

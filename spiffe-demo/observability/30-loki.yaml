@@ -16,11 +16,19 @@ data:
         - {from: "2024-01-01", store: tsdb, object_store: filesystem, schema: v13, index: {prefix: index_, period: 24h}}
     limits_config: {allow_structured_metadata: true}
 ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: loki-data, namespace: observability}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 2Gi}}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata: {name: loki, namespace: observability, labels: {app: loki}}
 spec:
   replicas: 1
+  strategy: {type: Recreate}
   selector: {matchLabels: {app: loki}}
   template:
     metadata: {labels: {app: loki}}
@@ -35,7 +43,7 @@ spec:
           resources: {requests: {cpu: 50m, memory: 192Mi}, limits: {memory: 512Mi}}
       volumes:
         - {name: config, configMap: {name: loki}}
-        - {name: data, emptyDir: {}}
+        - {name: data, persistentVolumeClaim: {claimName: loki-data}}
 ---
 apiVersion: v1
 kind: Service
