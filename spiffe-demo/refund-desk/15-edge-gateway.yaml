@@ -4,6 +4,17 @@
 #   /api/*                       the router's API         only with a valid JWT from the idp-service
 # Everything else has no route (404). The router sits behind this gateway and takes no traffic from anywhere else.
 # The certificate (Secret edge-tls) and the idp signing key are written by scripts/create-secrets.sh, never stored in Git.
+# A ClusterIP Service: reached by port-forward here (a cloud load balancer in production). A LoadBalancer would want host port 8443, which is taken.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayParameters
+metadata:
+  name: edge
+  namespace: refund-desk
+spec:
+  service:
+    spec:
+      type: ClusterIP
+---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -11,6 +22,8 @@ metadata:
   namespace: refund-desk
 spec:
   gatewayClassName: agentgateway
+  infrastructure:
+    parametersRef: {group: agentgateway.dev, kind: AgentgatewayParameters, name: edge}
   listeners:
     - name: https
       port: 8443
