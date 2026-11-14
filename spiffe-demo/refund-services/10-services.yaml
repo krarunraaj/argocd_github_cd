@@ -120,15 +120,13 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: policy-agent
-          image: policy-agent:1.0.0
+          image: policy-agent:1.1.0
           imagePullPolicy: IfNotPresent
           env:
             - {name: POLICY_PORT, value: "8700"}
             - {name: POLICY_OLLAMA_URL, value: "http://192.168.5.2:11434"}
-            - {name: POLICY_EMBED_MODEL, value: nomic-embed-text}
-            - {name: POLICY_FETCH_K, value: "4"}          # candidates from vector search
+            - {name: POLICY_RETRIEVER_URL, value: "http://retriever-service:8710"}
             - {name: POLICY_TOP_K, value: "2"}            # chunks kept after re-ranking
-            - {name: POLICY_MIN_SIMILARITY, value: "0.45"}
             - {name: POLICY_RERANKER, value: llm}         # llm | none
             - {name: POLICY_RERANK_MIN_SCORE, value: "4"}
             - {name: POLICY_RERANK_MODEL, value: "llama3.1:8b"}
@@ -146,3 +144,37 @@ metadata: {name: policy-agent, namespace: refund-desk}
 spec:
   selector: {app: policy-agent}
   ports: [{name: http, port: 8700, targetPort: http}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: retriever-service, namespace: refund-desk, labels: {app: retriever-service, part-of: refund-desk}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: retriever-service}}
+  template:
+    metadata: {labels: {app: retriever-service, part-of: refund-desk}}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: retriever-service
+          image: retriever-service:1.0.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: RETRIEVER_PORT, value: "8710"}
+            - {name: RETRIEVER_OLLAMA_URL, value: "http://192.168.5.2:11434"}
+            - {name: RETRIEVER_EMBED_MODEL, value: nomic-embed-text}
+            - {name: RETRIEVER_FETCH_K, value: "4"}          # candidates from vector search
+            - {name: RETRIEVER_MIN_SIMILARITY, value: "0.45"}
+            - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://otel-collector.observability.svc.cluster.local:4318"}
+          ports: [{name: http, containerPort: 8710}]
+          readinessProbe: {httpGet: {path: /health, port: http}, periodSeconds: 5}
+          livenessProbe: {httpGet: {path: /health, port: http}, initialDelaySeconds: 20, periodSeconds: 20}
+          resources: {requests: {cpu: 50m, memory: 128Mi}, limits: {memory: 384Mi}}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: retriever-service, namespace: refund-desk}
+spec:
+  selector: {app: retriever-service}
+  ports: [{name: http, port: 8710, targetPort: http}]

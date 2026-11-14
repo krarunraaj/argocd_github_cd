@@ -50,6 +50,16 @@ spec:
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
+metadata: {name: allow-retriever-from-policy-agent, namespace: refund-desk}
+spec:
+  podSelector: {matchLabels: {app: retriever-service}}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{podSelector: {matchLabels: {app: policy-agent}}}]
+      ports: [{port: 8710}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
 metadata: {name: allow-mcp-from-refund-agent, namespace: refund-desk}
 spec:
   podSelector: {matchLabels: {app: mcp-service}}
